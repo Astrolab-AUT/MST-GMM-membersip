@@ -51,13 +51,15 @@ def min_span_tree(df_data, params, num_std=1, manual_th=True, threshold=0.85, y_
 
     if fig:
         sorted_weights = sorted(edge_weights)
-        plt.figure(figsize=(4, 2))
-        plt.plot(sorted_weights)
-        plt.hlines(threshold, 0, len(df_data), colors='red')
+        plt.figure(figsize=(4, 2), dpi=100)
+        plt.plot(sorted_weights, linewidth=1.5)  # Smoothed line for better visualization
+        plt.hlines(threshold, 0, len(df_data), colors='red', linewidth=1.5, linestyle='--')
         plt.ylim(0, y_limit)
-        plt.xlabel('Edge Index')
-        plt.ylabel('Edge Weight')
-        plt.title('Sorted Edge Weights')
+        plt.xlabel('Edge Index', fontsize=10)  # Font size for x-axis label
+        plt.ylabel('Edge Weight', fontsize=10)  # Font size for y-axis label
+        plt.title('Sorted Edge Weights', fontsize=12)  # Font size for title
+        plt.tick_params(axis='both', labelsize=10)  # Font size for tick labels
+        plt.tight_layout()  # Prevent overlapping elements
         plt.show()
 
     nodes_to_remove = [node for node in mst.nodes() if mst.degree(node, weight='weight') > threshold]
@@ -67,6 +69,7 @@ def min_span_tree(df_data, params, num_std=1, manual_th=True, threshold=0.85, y_
     df_data.loc[nodes_to_remove, 'MST_cluster'] = 0
 
     return round(threshold, 2), df_data
+
 
 # Function to preprocess the cluster data
 def preprocess_cluster(data, g_mean_th=19):
@@ -103,19 +106,12 @@ def cmd_plot(data, x_axis, y_axis, alpha=0.8, s=5):
     plt.figure(figsize=(6, 4), dpi=100)
     sns.scatterplot(data=data, y=y_axis, x=x_axis, alpha=alpha, s=s, color='black', edgecolors='none', linewidth=0)
     plt.gca().invert_yaxis()
+    plt.xlabel(x_axis, fontsize=12)
+    plt.ylabel(y_axis, fontsize=12)
+    plt.tick_params(axis='both', labelsize=10)
+    plt.tight_layout()
     plt.show()
 
-# Function to create a joint plot
-def joint_plot(data):
-    """
-    Creates a joint KDE plot for proper motion data.
-
-    Parameters:
-        data (DataFrame): Input data with 'pmra' and 'pmdec' columns.
-    """
-    plt.figure(dpi=90)
-    sns.jointplot(data=data, x="pmra", y="pmdec", kind="kde")
-    plt.show()
 
 # Function to fit a Gaussian curve to histogram data
 def fit_curve(data, column, bins=100):
@@ -142,10 +138,16 @@ def fit_curve(data, column, bins=100):
     plt.figure(figsize=(8, 2), dpi=80)
     sns.scatterplot(x=x_data, y=y_data, label=column)
     plt.plot(x_data, gaussian(x_data, *popt), color='red', label='Fit')
-    plt.legend()
+    plt.legend(fontsize=10)
+    plt.xlabel(column, fontsize=12)
+    plt.ylabel('Count', fontsize=12)
+    plt.title(f'Gaussian Fit for {column}', fontsize=14)
+    plt.tick_params(axis='both', which='major', labelsize=10)
+    plt.tight_layout()
     plt.show()
 
     return popt
+
 
 # Function to filter data using Gaussian bounds
 def guassian_filter(data, column, mu, std):
@@ -213,7 +215,7 @@ def lum_plot(data):
     plt.show()
 
 # Function to plot CMD with predefined markers
-def cmd_plotly(data, x_axis, y_axis, huex='cluster', ax=None, alpha=0.8, s=7, theme=None, markers=['o', 'x']):
+def cmd_plotly(data, x_axis, y_axis, huex='cluster', ax=None, alpha=0.8, s=7, theme=None, markers=['o', 'x'], invert_yaxis=True):
     """
     Plots a Color-Magnitude Diagram (CMD) with predefined markers for clusters.
 
@@ -227,6 +229,7 @@ def cmd_plotly(data, x_axis, y_axis, huex='cluster', ax=None, alpha=0.8, s=7, th
         s (int): Size of points.
         theme (list): Colors for clusters.
         markers (list): Markers for clusters.
+        invert_yaxis (bool): Whether to invert the y-axis.
     """
     with plt.style.context(['ieee']):
         if ax is None:
@@ -249,9 +252,15 @@ def cmd_plotly(data, x_axis, y_axis, huex='cluster', ax=None, alpha=0.8, s=7, th
                 facecolor='none' if marker == 'o' else theme[cluster_value],
                 label=f'Cluster {cluster_value}'
             )
+        
+        # Apply consistent formatting
+        ax.set_xlabel(x_axis, fontsize=12)  # Set font size for x-axis label
+        ax.set_ylabel(y_axis, fontsize=12)  # Set font size for y-axis label
+        ax.tick_params(axis='both', labelsize=10)  # Set font size for tick labels
+        if invert_yaxis:
+            ax.invert_yaxis()  # Invert y-axis if specified
+        ax.legend(fontsize=10)  # Set font size for legend
 
-        ax.invert_yaxis()
-        ax.legend()
 
 def king_profile_function(r, f_b, f_0, R_C):
     """
@@ -261,18 +270,6 @@ def king_profile_function(r, f_b, f_0, R_C):
     return f_b + f_0 / (1 + (r / R_C)**2)
 
 def fit_king_profile(data, path, radius_num=50, cluster_name="Cluster", plotting=True):
-    """
-    Fit the King profile to star cluster data.
-    Parameters:
-        - data: pandas DataFrame with 'ra' and 'dec' columns for star positions.
-        - radius_num: Number of radial bins.
-        - cluster_name: Name of the cluster for title and file saving.
-        - plotting: Whether to plot the fit.
-    Returns:
-        - coefs: Best-fit parameters [f_b, f_0, R_C].
-        - R_tidal: Calculated tidal radius.
-        - cov: Covariance matrix of the fit.
-    """
     # Determine the center of the cluster
     center = (np.mean(data['ra']), np.mean(data['dec']))
     max_r = round(max(np.linalg.norm(center - data[['ra', 'dec']], axis=1)), 2) + 0.01
@@ -317,12 +314,14 @@ def fit_king_profile(data, path, radius_num=50, cluster_name="Cluster", plotting
             plt.figure(figsize=(5, 5), dpi=300)
             plt.bar(radii[:-1], star_densities, width=radii[1]-radii[0], color='black', alpha=0.9, label='Data')
             plt.plot(x, king_profile_function(x, coefs[0], coefs[1], coefs[2]), '--', color='red', lw=1.7, label='King Profile')
-            plt.legend()
-            plt.xlabel(r'$r$ (arcmin)')
-            plt.ylabel(r'$\rho$ (stars arcmin$^{-2}$)')
-            plt.title(f"{cluster_name}")
+            plt.legend(fontsize=10)
+            plt.xlabel(r'$r$ (deg)', fontsize=12)
+            plt.ylabel(r'$\rho$ (stars deg$^{-2}$)', fontsize=12)
+            plt.title(f"{cluster_name}", fontsize=14)
+            plt.tick_params(axis='both', which='major', labelsize=10)
+            plt.tight_layout()
             plt.savefig(path+f"/{cluster_name.replace(' ', '_')}_kp.pdf")
             plt.savefig(path+f"/{cluster_name.replace(' ', '_')}_kp.jpg")
-            plt.show()
+            plt.close()
 
     return coefs, R_tidal, cov
